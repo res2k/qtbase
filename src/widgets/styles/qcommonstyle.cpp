@@ -5584,7 +5584,12 @@ QIcon QCommonStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption
     case SP_FileLinkIcon:
     case SP_DesktopIcon:
     case SP_ComputerIcon:
-        if (const QPlatformTheme *theme = QGuiApplicationPrivate::platformTheme()) {
+    case SP_VistaShield:
+    case SP_MessageBoxInformation:
+    case SP_MessageBoxWarning:
+    case SP_MessageBoxCritical:
+    case SP_MessageBoxQuestion:
+      if (const QPlatformTheme *theme = QGuiApplicationPrivate::platformTheme()) {
             QPlatformTheme::StandardPixmap sp = static_cast<QPlatformTheme::StandardPixmap>(standardIcon);
             for (int size = 16 ; size <= 32 ; size += 16) {
                 QPixmap pixmap = theme->standardPixmap(sp, QSizeF(size, size));
@@ -5605,13 +5610,6 @@ QIcon QCommonStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption
                 pixmap = theme->standardPixmap(spOn, pixSize);
                 icon.addPixmap(pixmap, QIcon::Normal, QIcon::On);
             }
-        }
-        break;
-    case SP_VistaShield:
-        if (const QPlatformTheme *theme = QGuiApplicationPrivate::platformTheme()) {
-            QPlatformTheme::StandardPixmap sp = static_cast<QPlatformTheme::StandardPixmap>(standardIcon);
-            QPixmap pixmap = theme->standardPixmap(sp, QSizeF(32, 32));
-            icon.addPixmap(pixmap);
         }
         break;
     default:
