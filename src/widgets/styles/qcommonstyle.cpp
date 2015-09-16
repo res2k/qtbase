@@ -5591,6 +5591,9 @@ QIcon QCommonStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption
     case SP_MessageBoxQuestion:
       if (const QPlatformTheme *theme = QGuiApplicationPrivate::platformTheme()) {
             QPlatformTheme::StandardPixmap sp = static_cast<QPlatformTheme::StandardPixmap>(standardIcon);
+            QIconEngine* engine = theme->createIconEngine(sp);
+            if (engine)
+                return QIcon(engine);
             for (int size = 16 ; size <= 32 ; size += 16) {
                 QPixmap pixmap = theme->standardPixmap(sp, QSizeF(size, size));
                 icon.addPixmap(pixmap, QIcon::Normal);
