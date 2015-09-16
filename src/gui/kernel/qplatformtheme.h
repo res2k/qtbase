@@ -293,6 +293,7 @@ public:
     virtual QPixmap fileIconPixmap(const QFileInfo &fileInfo, const QSizeF &size,
                                    QPlatformTheme::IconOptions iconOptions = 0) const;
 
+    virtual QIconEngine *createIconEngine(StandardPixmap sp) const;
     virtual QIconEngine *createIconEngine(const QString &iconName) const;
 
     virtual QList<QKeySequence> keyBindings(QKeySequence::StandardKey key) const;

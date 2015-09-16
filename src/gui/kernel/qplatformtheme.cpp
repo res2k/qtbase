@@ -545,6 +545,15 @@ QPlatformSystemTrayIcon *QPlatformTheme::createPlatformSystemTrayIcon() const
 #endif
 
 /*!
+   Factory function for a QIconEngine that can be used to create standard
+   icons.
+*/
+QIconEngine *QPlatformTheme::createIconEngine(StandardPixmap sp) const
+{
+    return 0;
+}
+
+/*!
    Factory function for the QIconEngine used by QIcon::fromTheme(). By default this
    function returns a QIconLoaderEngine, but subclasses can reimplement it to
    provide their own.
