@@ -3,7 +3,7 @@
 ** Copyright (C) 2015 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing/
 **
-** This file is part of the plugins of the Qt Toolkit.
+** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL21$
 ** Commercial License Usage
@@ -31,53 +31,39 @@
 **
 ****************************************************************************/
 
-#ifndef QWINDOWSTHEME_H
-#define QWINDOWSTHEME_H
+#ifndef QWINDOWSICONENGINES_H
+#define QWINDOWSICONENGINES_H
 
-#include <qpa/qplatformtheme.h>
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Qt API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
+#include <QtGui/private/qicon_p.h>
 
 QT_BEGIN_NAMESPACE
 
-class QWindow;
-
-class QWindowsTheme : public QPlatformTheme
+class QWindowsResourceIconEngine : public QPixmapIconEngine
 {
 public:
-    QWindowsTheme();
-    ~QWindowsTheme();
+    QWindowsResourceIconEngine();
+    QWindowsResourceIconEngine (const QWindowsResourceIconEngine& other);
 
-    static QWindowsTheme *instance() { return m_instance; }
-
-    bool usePlatformNativeDialog(DialogType type) const Q_DECL_OVERRIDE;
-    QPlatformDialogHelper *createPlatformDialogHelper(DialogType type) const Q_DECL_OVERRIDE;
-    QVariant themeHint(ThemeHint) const Q_DECL_OVERRIDE;
-    virtual const QPalette *palette(Palette type = SystemPalette) const
-        { return m_palettes[type]; }
-    virtual const QFont *font(Font type = SystemFont) const
-        { return m_fonts[type]; }
-
-    QPixmap standardPixmap(StandardPixmap sp, const QSizeF &size) const Q_DECL_OVERRIDE;
-    QPixmap fileIconPixmap(const QFileInfo &fileInfo, const QSizeF &size,
-                           QPlatformTheme::IconOptions iconOptions = 0) const Q_DECL_OVERRIDE;
-
-    QIconEngine *createIconEngine(StandardPixmap sp) const Q_DECL_OVERRIDE;
-
-    void windowsThemeChanged(QWindow *window);
-
-    static const char *name;
-
+    // Load icons from resource, identifying the icon by name
+    bool load(const QString& path, const QString& resourceName);
+    // Load icons from resource, identifying the icon by index
+    bool load(const QString& path, int iconIndex);
 private:
-    void refresh() { refreshPalettes(); refreshFonts(); }
-    void clearPalettes();
-    void refreshPalettes();
-    void clearFonts();
-    void refreshFonts();
-
-    static QWindowsTheme *m_instance;
-    QPalette *m_palettes[NPalettes];
-    QFont *m_fonts[NFonts];
+    bool load(HMODULE module, LPCWSTR resourceName);
+    LPCWSTR resourceFromIconIndex(HMODULE module, int iconIndex);
 };
 
 QT_END_NAMESPACE
 
-#endif // QWINDOWSTHEME_H
+#endif // QWINDOWSICONENGINES_H

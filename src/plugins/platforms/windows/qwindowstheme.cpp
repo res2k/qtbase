@@ -54,6 +54,7 @@
 #  endif
 #  include <shellapi.h>
 #endif
+#include "qwindowsiconengines.h"
 
 #include <QtCore/QVariant>
 #include <QtCore/QCoreApplication>
@@ -493,6 +494,142 @@ static QPixmap loadIconFromShell32(int resourceId, QSizeF size)
     return QPixmap();
 }
 
+static bool getIconResource(QPlatformTheme::StandardPixmap sp, int& stockId, int& resourceId,
+                            LPCTSTR& legacyIconName)
+{
+    switch (sp) {
+    case QPlatformTheme::DriveCDIcon:
+        stockId = SIID_DRIVECD;
+        resourceId = 12;
+        return true;
+    case QPlatformTheme::DriveDVDIcon:
+        stockId = SIID_DRIVEDVD;
+        resourceId = 12;
+        return true;
+    case QPlatformTheme::DriveNetIcon:
+        stockId = SIID_DRIVENET;
+        resourceId = 10;
+        return true;
+    case QPlatformTheme::DriveHDIcon:
+        stockId = SIID_DRIVEFIXED;
+        resourceId = 9;
+        return true;
+    case QPlatformTheme::DriveFDIcon:
+        stockId = SIID_DRIVE35;
+        resourceId = 7;
+        return true;
+    case QPlatformTheme::FileLinkIcon:
+        // Fall through
+    case QPlatformTheme::FileIcon:
+        stockId = SIID_DOCNOASSOC;
+        resourceId = 1;
+        return true;
+    case QPlatformTheme::DirLinkIcon:
+        // Fall through
+    case QPlatformTheme::DirClosedIcon:
+    case QPlatformTheme::DirIcon:
+        stockId = SIID_FOLDER;
+        resourceId = 4;
+        return true;
+    case QPlatformTheme::DesktopIcon:
+        resourceId = 35;
+        return true;
+    case QPlatformTheme::ComputerIcon:
+        resourceId = 16;
+        return true;
+    case QPlatformTheme::DirLinkOpenIcon:
+        // Fall through
+    case QPlatformTheme::DirOpenIcon:
+        stockId = SIID_FOLDEROPEN;
+        resourceId = 5;
+        return true;
+    case QPlatformTheme::FileDialogNewFolder:
+        stockId = SIID_FOLDER;
+        resourceId = 319;
+        return true;
+    case QPlatformTheme::DirHomeIcon:
+        resourceId = 235;
+        return true;
+    case QPlatformTheme::TrashIcon:
+        stockId = SIID_RECYCLER;
+        resourceId = 191;
+        return true;
+#ifndef Q_OS_WINCE
+    case QPlatformTheme::MessageBoxInformation:
+        stockId = SIID_INFO;
+        legacyIconName = IDI_INFORMATION;
+        return true;
+    case QPlatformTheme::MessageBoxWarning:
+        stockId = SIID_WARNING;
+        legacyIconName = IDI_WARNING;
+        return true;
+    case QPlatformTheme::MessageBoxCritical:
+        stockId = SIID_ERROR;
+        legacyIconName = IDI_ERROR;
+        return true;
+    case QPlatformTheme::MessageBoxQuestion:
+        stockId = SIID_HELP;
+        legacyIconName = IDI_QUESTION;
+        return true;
+    case QPlatformTheme::VistaShield:
+        stockId = SIID_SHIELD;
+        return true;
+#endif
+    default:
+        break;
+    }
+    return false;
+}
+
+static QIconEngine *shellStockIconEngine(int stockId)
+{
+    if (QSysInfo::WindowsVersion >= QSysInfo::WV_VISTA
+        && (QSysInfo::WindowsVersion & QSysInfo::WV_NT_based)
+        && QWindowsContext::shell32dll.sHGetStockIconInfo) {
+        SHSTOCKICONINFO iconInfo;
+        memset(&iconInfo, 0, sizeof(iconInfo));
+        iconInfo.cbSize = sizeof(iconInfo);
+        if (QWindowsContext::shell32dll.sHGetStockIconInfo(stockId, 0, &iconInfo) == S_OK) {
+            QScopedPointer<QWindowsResourceIconEngine> e (new QWindowsResourceIconEngine);
+            if (e->load(QString::fromWCharArray(iconInfo.szPath), iconInfo.iIcon)) {
+                return e.take ();
+            }
+        }
+    }
+    return 0;
+}
+
+QIconEngine *QWindowsTheme::createIconEngine(StandardPixmap sp) const
+{
+    int resourceId = -1;
+    int stockId = SIID_INVALID;
+    LPCTSTR iconName = 0;
+
+    if (!getIconResource(sp, stockId, resourceId, iconName)) return 0;
+
+#ifndef Q_OS_WINCE
+    if (stockId != SIID_INVALID) {
+        if (QIconEngine *e = shellStockIconEngine(stockId)) {
+            return e;
+        }
+    }
+#endif
+
+    if (resourceId != -1) {
+    #ifdef Q_OS_WINCE
+        QString shellModule = QStringLiteral("ceshell.dll");
+    #else
+        QString shellModule = QStringLiteral("shell32.dll");
+    #endif
+        QScopedPointer<QWindowsResourceIconEngine> e (new QWindowsResourceIconEngine);
+        if (e->load(shellModule, QStringLiteral("#%1").arg(resourceId))) {
+            return e.take ();
+        }
+    }
+
+    return 0;
+}
+
 QPixmap QWindowsTheme::standardPixmap(StandardPixmap sp, const QSizeF &size) const
 {
     const QScreen *primaryScreen = QGuiApplication::primaryScreen();
@@ -502,96 +639,21 @@ QPixmap QWindowsTheme::standardPixmap(StandardPixmap sp, const QSizeF &size) con
     int stockId = SIID_INVALID;
     UINT stockFlags = 0;
     LPCTSTR iconName = 0;
-    switch (sp) {
-    case DriveCDIcon:
-        stockId = SIID_DRIVECD;
-        resourceId = 12;
-        break;
-    case DriveDVDIcon:
-        stockId = SIID_DRIVEDVD;
-        resourceId = 12;
-        break;
-    case DriveNetIcon:
-        stockId = SIID_DRIVENET;
-        resourceId = 10;
-        break;
-    case DriveHDIcon:
-        stockId = SIID_DRIVEFIXED;
-        resourceId = 9;
-        break;
-    case DriveFDIcon:
-        stockId = SIID_DRIVE35;
-        resourceId = 7;
-        break;
-    case FileLinkIcon:
-        stockFlags = SHGSI_LINKOVERLAY;
-        // Fall through
-    case FileIcon:
-        stockId = SIID_DOCNOASSOC;
-        resourceId = 1;
-        break;
-    case DirLinkIcon:
-        stockFlags = SHGSI_LINKOVERLAY;
-        // Fall through
-    case DirClosedIcon:
-    case DirIcon:
-        stockId = SIID_FOLDER;
-        resourceId = 4;
-        break;
-    case DesktopIcon:
-        resourceId = 35;
-        break;
-    case ComputerIcon:
-        resourceId = 16;
-        break;
-    case DirLinkOpenIcon:
-        stockFlags = SHGSI_LINKOVERLAY;
-        // Fall through
-    case DirOpenIcon:
-        stockId = SIID_FOLDEROPEN;
-        resourceId = 5;
-        break;
-    case FileDialogNewFolder:
-        stockId = SIID_FOLDER;
-        resourceId = 319;
-        break;
-    case DirHomeIcon:
-        resourceId = 235;
-        break;
-    case TrashIcon:
-        stockId = SIID_RECYCLER;
-        resourceId = 191;
-        break;
-#ifndef Q_OS_WINCE
-    case MessageBoxInformation:
-        stockId = SIID_INFO;
-        iconName = IDI_INFORMATION;
-        break;
-    case MessageBoxWarning:
-        stockId = SIID_WARNING;
-        iconName = IDI_WARNING;
-        break;
-    case MessageBoxCritical:
-        stockId = SIID_ERROR;
-        iconName = IDI_ERROR;
-        break;
-    case MessageBoxQuestion:
-        stockId = SIID_HELP;
-        iconName = IDI_QUESTION;
-        break;
-    case VistaShield:
-        stockId = SIID_SHIELD;
-        break;
-#endif
-    default:
-        break;
-    }
+
+    getIconResource(sp, stockId, resourceId, iconName);
 
 #ifndef Q_OS_WINCE
     if (stockId != SIID_INVALID) {
         if (QSysInfo::WindowsVersion >= QSysInfo::WV_VISTA
             && (QSysInfo::WindowsVersion & QSysInfo::WV_NT_based)
             && QWindowsContext::shell32dll.sHGetStockIconInfo) {
+            switch (sp) {
+            case FileLinkIcon:
+            case DirLinkIcon:
+            case DirLinkOpenIcon:
+                stockFlags |= SHGSI_LINKOVERLAY;
+                break;
+            }
             QPixmap pixmap;
             SHSTOCKICONINFO iconInfo;
             memset(&iconInfo, 0, sizeof(iconInfo));

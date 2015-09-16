@@ -28,6 +28,7 @@ SOURCES += \
     $$PWD/qwindowskeymapper.cpp \
     $$PWD/qwindowsfontengine.cpp \
     $$PWD/qwindowsfontdatabase.cpp \
+    $$PWD/qwindowsiconengines.cpp \
     $$PWD/qwindowsmousehandler.cpp \
     $$PWD/qwindowsguieventdispatcher.cpp \
     $$PWD/qwindowsole.cpp \
@@ -50,6 +51,7 @@ HEADERS += \
     $$PWD/qwindowskeymapper.h \
     $$PWD/qwindowsfontengine.h \
     $$PWD/qwindowsfontdatabase.h \
+    $$PWD/qwindowsiconengines.h \
     $$PWD/qwindowsmousehandler.h \
     $$PWD/qwindowsguieventdispatcher.h \
     $$PWD/qtwindowsglobal.h \
