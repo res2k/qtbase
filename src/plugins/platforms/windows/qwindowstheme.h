@@ -35,6 +35,8 @@
 #define QWINDOWSTHEME_H
 
 #include <qpa/qplatformtheme.h>
+#include <QtCore/qcache.h>
+#include <QtCore/qsharedpointer.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -76,6 +78,7 @@ private:
     static QWindowsTheme *m_instance;
     QPalette *m_palettes[NPalettes];
     QFont *m_fonts[NFonts];
+    mutable QCache<StandardPixmap, QIconEngine> m_cachedEngines;
 };
 
 QT_END_NAMESPACE

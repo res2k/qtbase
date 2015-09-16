@@ -601,6 +601,11 @@ static QIconEngine *shellStockIconEngine(int stockId)
 
 QIconEngine *QWindowsTheme::createIconEngine(StandardPixmap sp) const
 {
+    QIconEngine* cachedEngine (m_cachedEngines[sp]);
+    if (cachedEngine) {
+        return cachedEngine->clone();
+    }
+
     int resourceId = -1;
     int stockId = SIID_INVALID;
     LPCTSTR iconName = 0;
@@ -610,6 +615,7 @@ QIconEngine *QWindowsTheme::createIconEngine(StandardPixmap sp) const
 #ifndef Q_OS_WINCE
     if (stockId != SIID_INVALID) {
         if (QIconEngine *e = shellStockIconEngine(stockId)) {
+            m_cachedEngines.insert(sp, e->clone());
             return e;
         }
     }
@@ -623,6 +629,7 @@ QIconEngine *QWindowsTheme::createIconEngine(StandardPixmap sp) const
     #endif
         QScopedPointer<QWindowsResourceIconEngine> e (new QWindowsResourceIconEngine);
         if (e->load(shellModule, QStringLiteral("#%1").arg(resourceId))) {
+            m_cachedEngines.insert(sp, e->clone());
             return e.take ();
         }
     }
