@@ -5582,8 +5582,13 @@ QIcon QCommonStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption
     case SP_DriveFDIcon:
     case SP_FileIcon:
     case SP_FileLinkIcon:
+    case SP_DirOpenIcon:
+    case SP_DirClosedIcon:
+    case SP_DirLinkOpenIcon:
+    case SP_DirHomeIcon:
     case SP_DesktopIcon:
     case SP_ComputerIcon:
+    case SP_TrashIcon:
     case SP_VistaShield:
     case SP_MessageBoxInformation:
     case SP_MessageBoxWarning:
