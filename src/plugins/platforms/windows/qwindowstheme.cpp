@@ -494,8 +494,7 @@ static QPixmap loadIconFromShell32(int resourceId, QSizeF size)
     return QPixmap();
 }
 
-static bool getIconResource(QPlatformTheme::StandardPixmap sp, int& stockId, int& resourceId,
-                            LPCTSTR& legacyIconName)
+static bool getIconResource(QPlatformTheme::StandardPixmap sp, int& stockId, int& resourceId)
 {
     switch (sp) {
     case QPlatformTheme::DriveCDIcon:
@@ -557,19 +556,15 @@ static bool getIconResource(QPlatformTheme::StandardPixmap sp, int& stockId, int
 #ifndef Q_OS_WINCE
     case QPlatformTheme::MessageBoxInformation:
         stockId = SIID_INFO;
-        legacyIconName = IDI_INFORMATION;
         return true;
     case QPlatformTheme::MessageBoxWarning:
         stockId = SIID_WARNING;
-        legacyIconName = IDI_WARNING;
         return true;
     case QPlatformTheme::MessageBoxCritical:
         stockId = SIID_ERROR;
-        legacyIconName = IDI_ERROR;
         return true;
     case QPlatformTheme::MessageBoxQuestion:
         stockId = SIID_HELP;
-        legacyIconName = IDI_QUESTION;
         return true;
     case QPlatformTheme::VistaShield:
         stockId = SIID_SHIELD;
@@ -617,9 +612,8 @@ QIconEngine *QWindowsTheme::createIconEngine(StandardPixmap sp) const
 
     int resourceId = -1;
     int stockId = SIID_INVALID;
-    LPCTSTR iconName = 0;
 
-    if (!getIconResource(sp, stockId, resourceId, iconName)) return 0;
+    if (!getIconResource(sp, stockId, resourceId)) return 0;
 
     // See if we need a link overlay
     QIcon linkOverlay;
@@ -668,52 +662,38 @@ QPixmap QWindowsTheme::standardPixmap(StandardPixmap sp, const QSizeF &size) con
     const QScreen *primaryScreen = QGuiApplication::primaryScreen();
     const int scaleFactor = primaryScreen ? qRound(QHighDpiScaling::factor(primaryScreen)) : 1;
     const QSizeF pixmapSize = size * scaleFactor;
-    int resourceId = -1;
-    int stockId = SIID_INVALID;
-    UINT stockFlags = 0;
-    LPCTSTR iconName = 0;
-
-    getIconResource(sp, stockId, resourceId, iconName);
-
-#ifndef Q_OS_WINCE
-    if (stockId != SIID_INVALID) {
-        if (QSysInfo::WindowsVersion >= QSysInfo::WV_VISTA
-            && (QSysInfo::WindowsVersion & QSysInfo::WV_NT_based)
-            && QWindowsContext::shell32dll.sHGetStockIconInfo) {
-            switch (sp) {
-            case FileLinkIcon:
-            case DirLinkIcon:
-            case DirLinkOpenIcon:
-                stockFlags |= SHGSI_LINKOVERLAY;
-                break;
-            }
-            QPixmap pixmap;
-            SHSTOCKICONINFO iconInfo;
-            memset(&iconInfo, 0, sizeof(iconInfo));
-            iconInfo.cbSize = sizeof(iconInfo);
-            stockFlags |= (pixmapSize.width() > 16 ? SHGFI_LARGEICON : SHGFI_SMALLICON);
-            if (QWindowsContext::shell32dll.sHGetStockIconInfo(stockId, SHGFI_ICON | stockFlags, &iconInfo) == S_OK) {
-                pixmap = qt_pixmapFromWinHICON(iconInfo.hIcon);
-                pixmap.setDevicePixelRatio(scaleFactor);
-                DestroyIcon(iconInfo.hIcon);
-                return pixmap;
-            }
-        }
-    }
-#endif
-
-    if (resourceId != -1) {
-        QPixmap pixmap = loadIconFromShell32(resourceId, pixmapSize);
-        if (!pixmap.isNull()) {
-            if (sp == FileLinkIcon || sp == DirLinkIcon || sp == DirLinkOpenIcon) {
-                QPainter painter(&pixmap);
-                QPixmap link = loadIconFromShell32(30, pixmapSize);
-                painter.drawPixmap(0, 0, pixmapSize.width(), pixmapSize.height(), link);
-            }
-            pixmap.setDevicePixelRatio(scaleFactor);
+    QScopedPointer<QIconEngine> e (createIconEngine (sp));
+    if (e)
+    {
+        QIcon icon(e.take());
+        QPixmap pixmap = icon.pixmap(pixmapSize.toSize(), QIcon::Normal, QIcon::Off);
+        if (!pixmap.isNull ()) {
             return pixmap;
         }
     }
+
+    LPCTSTR iconName = 0;
+
+    /* If stock icons are not supported the only other way
+     * to get message box icons is LoadIcon() */
+#ifndef Q_OS_WINCE
+    switch (sp) {
+    case MessageBoxInformation:
+      iconName = IDI_INFORMATION;
+      break;
+    case MessageBoxWarning:
+      iconName = IDI_WARNING;
+      break;
+    case MessageBoxCritical:
+      iconName = IDI_ERROR;
+      break;
+    case MessageBoxQuestion:
+      iconName = IDI_QUESTION;
+      break;
+    default:
+      break;
+    }
+#endif
 
     if (iconName) {
         HICON iconHandle = LoadIcon(NULL, iconName);
