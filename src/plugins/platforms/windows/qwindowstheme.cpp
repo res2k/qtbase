@@ -603,6 +603,17 @@ static QString shellModule()
 #endif
 }
 
+class PIDLHolder
+{
+    PIDLIST_ABSOLUTE pidl;
+public:
+    PIDLHolder() : pidl(0) {}
+    ~PIDLHolder() { ILFree(reinterpret_cast<PIDLIST_RELATIVE> (pidl)); }
+
+    PIDLIST_ABSOLUTE* operator&() { return &pidl; }
+    PIDLIST_ABSOLUTE get() const { return pidl; }
+};
+
 QIconEngine *QWindowsTheme::createIconEngine(StandardPixmap sp) const
 {
     QIconEngine* cachedEngine (m_cachedEngines[sp]);
@@ -629,6 +640,39 @@ QIconEngine *QWindowsTheme::createIconEngine(StandardPixmap sp) const
         }
     }
 #endif
+
+    /* Preferably extract some icons via shell special folders */
+    int csidl = -1;
+    switch (sp) {
+    case QPlatformTheme::ComputerIcon:
+        csidl = CSIDL_DRIVES;
+        break;
+    case QPlatformTheme::DesktopIcon:
+        csidl = CSIDL_DESKTOP;
+        break;
+    case QPlatformTheme::DirHomeIcon:
+        csidl = CSIDL_MYDOCUMENTS;
+        break;
+    case QPlatformTheme::TrashIcon:
+        csidl = CSIDL_BITBUCKET;
+        break;
+    }
+    if (csidl != -1) {
+      PIDLHolder pidl;
+      if (SUCCEEDED(SHGetFolderLocation(0, csidl, 0, 0, &pidl))) {
+          SHFILEINFOW sfi;
+          memset(&sfi, 0, sizeof (sfi));
+          if (SUCCEEDED(SHGetFileInfoW(reinterpret_cast<LPCWSTR> (pidl.get()),
+                                       -1, &sfi, sizeof(sfi),
+                                       SHGFI_PIDL | SHGFI_ICONLOCATION))) {
+              QScopedPointer<QWindowsResourceIconEngine> e (new QWindowsResourceIconEngine);
+              if (e->load(QString::fromWCharArray(sfi.szDisplayName), sfi.iIcon)) {
+                  m_cachedEngines.insert(sp, e->clone());
+                  return e.take ();
+              }
+          }
+      }
+    }
 
     if (resourceId != -1) {
         QScopedPointer<QWindowsResourceIconEngine> e (new QWindowsResourceIconEngine);
