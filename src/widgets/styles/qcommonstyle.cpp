@@ -45,6 +45,7 @@
 #include <qdialogbuttonbox.h>
 #include <qformlayout.h>
 #include <qgroupbox.h>
+#include <qiconengine.h>
 #include <qmath.h>
 #include <qmenu.h>
 #include <qpainter.h>
@@ -5611,6 +5612,19 @@ QIcon QCommonStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption
             QPlatformTheme::StandardPixmap spOff = static_cast<QPlatformTheme::StandardPixmap>(standardIcon);
             QPlatformTheme::StandardPixmap spOn = standardIcon == SP_DirIcon ? QPlatformTheme::DirOpenIcon :
                                                                                  QPlatformTheme::DirLinkOpenIcon;
+            QScopedPointer<QIconEngine> engineOff (theme->createIconEngine(spOff));
+            QScopedPointer<QIconEngine> engineOn (theme->createIconEngine(spOn));
+            if (engineOff && engineOn) {
+                QIcon iconOff (engineOff.take());
+                QIcon iconOn (engineOn.take());
+                Q_FOREACH (const QSize iconSize, iconOff.availableSizes()) {
+                    icon.addPixmap(iconOff.pixmap(iconSize, QIcon::Normal, QIcon::Off),
+                                   QIcon::Normal, QIcon::Off);
+                    icon.addPixmap(iconOn.pixmap(iconSize, QIcon::Normal, QIcon::Off),
+                                   QIcon::Normal, QIcon::On);
+                }
+                return icon;
+            }
             for (int size = 16 ; size <= 32 ; size += 16) {
                 QSizeF pixSize(size, size);
                 QPixmap pixmap = theme->standardPixmap(spOff, pixSize);
