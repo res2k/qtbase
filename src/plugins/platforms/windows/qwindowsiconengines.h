@@ -49,6 +49,8 @@
 
 QT_BEGIN_NAMESPACE
 
+class QIcon;
+
 class QWindowsResourceIconEngine : public QPixmapIconEngine
 {
 public:
@@ -57,10 +59,12 @@ public:
 
     // Load icons from resource, identifying the icon by name
     bool load(const QString& path, const QString& resourceName);
+    bool load(const QString& path, const QString& resourceName, const QIcon& overlay);
     // Load icons from resource, identifying the icon by index
     bool load(const QString& path, int iconIndex);
+    bool load(const QString& path, int iconIndex, const QIcon& overlay);
 private:
-    bool load(HMODULE module, LPCWSTR resourceName);
+    bool load(HMODULE module, LPCWSTR resourceName, const QIcon& overlay);
     LPCWSTR resourceFromIconIndex(HMODULE module, int iconIndex);
 };
 

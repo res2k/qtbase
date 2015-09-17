@@ -581,7 +581,7 @@ static bool getIconResource(QPlatformTheme::StandardPixmap sp, int& stockId, int
     return false;
 }
 
-static QIconEngine *shellStockIconEngine(int stockId)
+static QIconEngine *shellStockIconEngine(int stockId, const QIcon& overlay = QIcon())
 {
     if (QSysInfo::WindowsVersion >= QSysInfo::WV_VISTA
         && (QSysInfo::WindowsVersion & QSysInfo::WV_NT_based)
@@ -591,12 +591,21 @@ static QIconEngine *shellStockIconEngine(int stockId)
         iconInfo.cbSize = sizeof(iconInfo);
         if (QWindowsContext::shell32dll.sHGetStockIconInfo(stockId, 0, &iconInfo) == S_OK) {
             QScopedPointer<QWindowsResourceIconEngine> e (new QWindowsResourceIconEngine);
-            if (e->load(QString::fromWCharArray(iconInfo.szPath), iconInfo.iIcon)) {
+            if (e->load(QString::fromWCharArray(iconInfo.szPath), iconInfo.iIcon, overlay)) {
                 return e.take ();
             }
         }
     }
     return 0;
+}
+
+static QString shellModule()
+{
+#ifdef Q_OS_WINCE
+    return QStringLiteral("ceshell.dll");
+#else
+    return QStringLiteral("shell32.dll");
+#endif
 }
 
 QIconEngine *QWindowsTheme::createIconEngine(StandardPixmap sp) const
@@ -612,9 +621,15 @@ QIconEngine *QWindowsTheme::createIconEngine(StandardPixmap sp) const
 
     if (!getIconResource(sp, stockId, resourceId, iconName)) return 0;
 
+    // See if we need a link overlay
+    QIcon linkOverlay;
+    if ((sp == FileLinkIcon) || (sp == DirLinkIcon) || (sp == DirLinkOpenIcon)) {
+        linkOverlay = linkOverlayIcon();
+    }
+
 #ifndef Q_OS_WINCE
     if (stockId != SIID_INVALID) {
-        if (QIconEngine *e = shellStockIconEngine(stockId)) {
+        if (QIconEngine *e = shellStockIconEngine(stockId, linkOverlay)) {
             m_cachedEngines.insert(sp, e->clone());
             return e;
         }
@@ -622,19 +637,30 @@ QIconEngine *QWindowsTheme::createIconEngine(StandardPixmap sp) const
 #endif
 
     if (resourceId != -1) {
-    #ifdef Q_OS_WINCE
-        QString shellModule = QStringLiteral("ceshell.dll");
-    #else
-        QString shellModule = QStringLiteral("shell32.dll");
-    #endif
         QScopedPointer<QWindowsResourceIconEngine> e (new QWindowsResourceIconEngine);
-        if (e->load(shellModule, QStringLiteral("#%1").arg(resourceId))) {
+        if (e->load(shellModule(), QStringLiteral("#%1").arg(resourceId), linkOverlay)) {
             m_cachedEngines.insert(sp, e->clone());
             return e.take ();
         }
     }
 
     return 0;
+}
+
+QIcon QWindowsTheme::linkOverlayIcon() const
+{
+    if (!m_linkOverlay.isNull()) return m_linkOverlay;
+
+    if (QIconEngine *stockEngine = shellStockIconEngine(SIID_LINK)) {
+        m_linkOverlay = QIcon (stockEngine);
+    } else {
+        QScopedPointer<QWindowsResourceIconEngine> resEngine (new QWindowsResourceIconEngine);
+        if (resEngine->load(shellModule(), QStringLiteral("#30"))) {
+            m_linkOverlay = QIcon (resEngine.take());
+        }
+    }
+
+    return m_linkOverlay;
 }
 
 QPixmap QWindowsTheme::standardPixmap(StandardPixmap sp, const QSizeF &size) const

@@ -37,6 +37,7 @@
 #include <qpa/qplatformtheme.h>
 #include <QtCore/qcache.h>
 #include <QtCore/qsharedpointer.h>
+#include <QtGui/qicon.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -74,11 +75,13 @@ private:
     void refreshPalettes();
     void clearFonts();
     void refreshFonts();
+    QIcon linkOverlayIcon() const;
 
     static QWindowsTheme *m_instance;
     QPalette *m_palettes[NPalettes];
     QFont *m_fonts[NFonts];
     mutable QCache<StandardPixmap, QIconEngine> m_cachedEngines;
+    mutable QIcon m_linkOverlay;
 };
 
 QT_END_NAMESPACE

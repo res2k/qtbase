@@ -36,6 +36,7 @@
 #include "qwindowsscaling.h"
 
 #include <QtCore/qset.h>
+#include <QtGui/qpainter.h>
 
 // Defined in qpixmap_win.cpp
 Q_GUI_EXPORT QPixmap qt_pixmapFromWinHICON(HICON icon);
@@ -64,18 +65,28 @@ static HMODULE LoadLibraryAsDataFile (const QString& path)
 
 bool QWindowsResourceIconEngine::load(const QString& path, const QString& resourceName)
 {
+    return load(path, resourceName, QIcon());
+}
+
+bool QWindowsResourceIconEngine::load(const QString& path, const QString& resourceName, const QIcon& overlay)
+{
     HMODULE module = LoadLibraryAsDataFile(path);
-    bool result = load(module, reinterpret_cast<LPCWSTR> (resourceName.unicode()));
+    bool result = load(module, reinterpret_cast<LPCWSTR> (resourceName.unicode()), overlay);
     FreeLibrary(module);
     return result;
 }
 
 bool QWindowsResourceIconEngine::load(const QString& path, int iconIndex)
 {
+    return load(path, iconIndex, QIcon());
+}
+
+bool QWindowsResourceIconEngine::load(const QString& path, int iconIndex, const QIcon& overlay)
+{
     HMODULE module = LoadLibraryAsDataFile(path);
     bool result = false;
     if (LPCWSTR resourceName = resourceFromIconIndex (module, iconIndex)) {
-        result = load(module, resourceName);
+        result = load(module, resourceName, overlay);
     }
     FreeLibrary(module);
     return result;
@@ -106,7 +117,7 @@ typedef struct GRPICONDIR
 
 #include <poppack.h>
 
-bool QWindowsResourceIconEngine::load(HMODULE module, LPCWSTR resourceName)
+bool QWindowsResourceIconEngine::load(HMODULE module, LPCWSTR resourceName, const QIcon& overlay)
 {
     HRSRC iconGroupResource = FindResourceW(module, resourceName, RT_GROUP_ICON);
     if (!iconGroupResource) return false;
@@ -134,6 +145,15 @@ bool QWindowsResourceIconEngine::load(HMODULE module, LPCWSTR resourceName)
             resourceName, IMAGE_ICON, size, size, 0));
         if (icon) {
             QPixmap pixmap = qt_pixmapFromWinHICON(icon);
+            // Apply (link) overlay, if given
+            if (!overlay.isNull()) {
+                QPainter painter(&pixmap);
+                QPixmap overlayPixmap = overlay.pixmap(QSize (size, size), QIcon::Normal, QIcon::Off);
+                painter.drawPixmap(0, 0,
+                                   overlayPixmap.width(),
+                                   overlayPixmap.height(),
+                                   overlayPixmap);
+            }
             pixmap.setDevicePixelRatio (scaleFactor);
             addPixmap(pixmap, QIcon::Normal, QIcon::Off);
             DestroyIcon(icon);
